@@ -9,7 +9,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\DomCrawler\Crawler;
+use Symfony\Component\DomCrawler\Crawler as DomCrawler;
 use Symfony\Component\Filesystem\Filesystem;
 
 class Scraper extends Command
@@ -164,7 +164,7 @@ class Scraper extends Command
         try {
             $body = $this->client->get($url)->getBody()->getContents();
 
-            $crawler = Crawler($body);
+            $crawler = new DomCrawler($body);
 
             $this->retry = 0;
 
