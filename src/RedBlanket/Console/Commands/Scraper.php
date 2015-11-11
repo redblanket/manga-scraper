@@ -38,7 +38,7 @@ class Scraper extends Command
             )
             ->addArgument(
                 'path',
-                InputArgument::REQUIRED,
+                InputArgument::OPTIONAL,
                 'Full path where to store the files'
             )
             ->addOption(
@@ -54,22 +54,11 @@ class Scraper extends Command
                 InputOption::VALUE_REQUIRED,
                 'Set the last chapter to be fetched',
                 0
-            )
-            ->addOption(
-                'downloader',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Choose type of downloader: normal (file_get_contents) or cURL',
-                'normal'
             );
     }
 
     public function execute(InputInterface $input, OutputInterface $output)
     {
-        $url  = $input->getArgument('url');
-        $path = $input->getArgument('path');
-        $path = rtrim($path, '/');
-
         $this->client = new Client;
         $this->config = include_once(ROOT_PATH . '/config.php');
         $this->fs     = new Filesystem;
@@ -78,7 +67,10 @@ class Scraper extends Command
 
         $this->start_at   = $this->input->getOption('start') ? $this->input->getOption('start') : 0;
         $this->end_at     = $this->input->getOption('end') ? $this->input->getOption('end') : 999;
-        $this->downloader = $this->input->getOption('downloader') ? $this->input->getOption('downloader') : $this->config['downloader'];
+
+        $url  = $this->input->getArgument('url');
+        $path = $this->input->getArgument('path') ? $input->getArgument('path') : $this->config['download_path'];
+        $path = rtrim($path, '/');
 
         // Get manga name
         $parts       = explode('/', $url);
@@ -91,8 +83,6 @@ class Scraper extends Command
         // Create the folder
         $this->fs->mkdir($this->manga);
 
-        $this->historyFile();
-
         $this->output->writeln('');
         $this->output->writeln('<question> ' . $mangaName . ' </question>');
         $this->output->writeln('');
@@ -100,15 +90,13 @@ class Scraper extends Command
         try {
 
             // Get chapters link from main manga page
-            $comic = $this->crawler($url);
+            $comic = $this->fetchContent($url);
 
             $comic->filter('#listing tr td:first-child')->each( function($node) {
 
                 $link = $node->filter('a')->first()->attr('href');
 
-                // get chapter number
-                $parts = explode('/', $link);
-                $chapterNum = $parts[count($parts) - 1];
+                $chapterNum = $this->getChapterNum($link);
 
                 if ($chapterNum >= $this->start_at AND $chapterNum <= $this->end_at) {
 
@@ -121,7 +109,7 @@ class Scraper extends Command
                     $this->fs->mkdir($location);
                     $chapterLink = 'http://mangapanda.com' . $link;
 
-                    $chapterPage = $this->crawler($chapterLink);
+                    $chapterPage = $this->fetchContent($chapterLink);
 
                     // Navigate page
                     $chapterPage->filter('#pageMenu')->children()->each(function ($child) use ($location, $chapterLink, $chapterNum) {
@@ -132,13 +120,19 @@ class Scraper extends Command
                             $imgURL .= '/1';
                         }
 
-                        $imx   = $this->crawler($imgURL);
+                        $imx   = $this->fetchContent($imgURL);
                         $src   = $imx->filter('img#img:first-child')->attr('src');
 
                         $parts   = explode('/', $src);
                         $imgName = $parts[count($parts) - 1];
 
-                        $this->download($src, $location . '/' . $imgName, $chapterNum, $imgName);
+                        // Check if the image downloaded
+                        if (! file_exists($location . '/' . $imgName)) {
+                            $this->download($src, $location . '/' . $imgName, $imgName);
+                        }
+                        else {
+                            $this->skipFile($imgName);
+                        }
                     });
 
                     if ((int) $this->config['page_sleep'] > 0) {
@@ -147,6 +141,9 @@ class Scraper extends Command
                     }
                 } //
             });
+
+            $this->output->writeln('');
+            $this->output->writeln('<fg=cyan>DONE!</>');
         }
         catch (\Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
@@ -160,7 +157,7 @@ class Scraper extends Command
      *
      * @return DomCrawler
      */
-    private function crawler($url)
+    private function fetchContent($url)
     {
         if ($this->retry > $this->config['max_retry']) {
             $this->output->writeln('<error>Maximum retry reached! Try again later.');
@@ -186,51 +183,9 @@ class Scraper extends Command
      *
      * @param $url
      * @param $location
-     * @param $chapter
      * @param $image
      */
-    private function download($url, $location, $chapter, $image)
-    {
-        $parts = explode('/', $url);
-        $name  = $parts[count($parts) - 1];
-
-        if (! file_exists($location)) {
-
-            switch ($this->downloader) {
-                default:
-                case 'normal':
-                    $this->downloadNormal($url, $location, $chapter, $image);
-                    break;
-
-                case 'curl':
-                    $this->downloadCurl($url, $location, $chapter, $image);
-                    break;
-            }
-
-            $this->output->writeln('Image: <info>' . $name . '</info>');
-
-            if ((int) $this->config['image_sleep'] > 0) {
-                sleep((int) $this->config['image_sleep']);
-            }
-        }
-        else {
-
-            $this->writeHistory($chapter, $image);
-
-            $this->output->writeln('Image: <info>' . $name . '</info> <error>SKIPPED!</error>');
-        }
-
-    }
-
-    /**
-     * Download file using Symfony\Filesystem
-     *
-     * @param $url
-     * @param $location
-     * @param $chapter
-     * @param $image
-     */
-    private function downloadNormal($url, $location, $chapter, $image)
+    private function download($url, $location, $image)
     {
         $content = null;
 
@@ -244,66 +199,42 @@ class Scraper extends Command
 
             $this->fs->dumpFile($location, $content);
 
-            $this->writeHistory($chapter, $image);
+            $this->output->writeln('Image: <info>' . $image . '</info>');
         }
         catch (\Exception $e) {
             // Retry
-            $this->downloadNormal($url, $location);
+            $this->download($url, $location);
 
             $this->retry++;
+        }
+
+        if ((int) $this->config['image_sleep'] > 0) {
+            sleep((int) $this->config['image_sleep']);
         }
     }
 
     /**
-     * Download file using cURL
+     * Skip file download
      *
-     * @param $url
-     * @param $location
-     * @param $chapter
      * @param $image
      */
-    private function downloadCurl($url, $location, $chapter, $image)
+    private function skipFile($image)
     {
-        if ($this->retry > $this->config['max_retry']) {
-            $this->output->writeln('<error>Maximum retry reached! Try again later.');
-            die;
-        }
-
-        try {
-            $ch = curl_init($url);
-            $fp = fopen($location, 'wb');
-            curl_setopt($ch, CURLOPT_FILE, $fp);
-            curl_setopt($ch, CURLOPT_HEADER, 0);
-            curl_exec($ch);
-            curl_close($ch);
-            fclose($fp);
-
-            $this->writeHistory($chapter, $image);
-        }
-        catch (\Exception $e) {
-            $this->downloadCurl($url, $location);
-
-            $this->retry++;
-        }
+        $this->output->writeln('Image: <info>' . $image . '</info> <error>SKIPPED!</error>');
     }
 
-    private function writeHistory($chapter, $image)
+    /**
+     * @param $link
+     *
+     * @return mixed
+     */
+    private function getChapterNum($link)
     {
-        $this->done[$chapter][] = $image;
+        // get chapter number
+        $parts      = explode('/', $link);
+        $chapterNum = $parts[count($parts) - 1];
 
-        $this->fs->dumpFile($this->manga . '/history.json', json_encode($this->done));
-    }
-
-    private function historyFile()
-    {
-        if (! file_exists($this->manga . '/history.json')) {
-            // Create history file
-            $this->fs->touch($this->manga . '/history.json');
-
-            $this->fs->dumpFile($this->manga . '/history.json', json_encode([]));
-        }
-
-        $this->done = json_decode(file_get_contents($this->manga . '/history.json'), true);
+        return $chapterNum;
     }
 
 }
