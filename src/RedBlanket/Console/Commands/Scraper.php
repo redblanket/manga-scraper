@@ -91,8 +91,7 @@ class Scraper extends Command
         // Create the folder
         $this->fs->mkdir($this->manga);
 
-        // Create history file
-        $this->fs->touch($this->manga . '/history.json');
+        $this->historyFile();
 
         $this->output->writeln('');
         $this->output->writeln('<question> ' . $mangaName . ' </question>');
@@ -215,6 +214,9 @@ class Scraper extends Command
             }
         }
         else {
+
+            $this->writeHistory($chapter, $image);
+
             $this->output->writeln('Image: <info>' . $name . '</info> <error>SKIPPED!</error>');
         }
 
@@ -290,6 +292,18 @@ class Scraper extends Command
         $this->done[$chapter][] = $image;
 
         $this->fs->dumpFile($this->manga . '/history.json', json_encode($this->done));
+    }
+
+    private function historyFile()
+    {
+        if (! file_exists($this->manga . '/history.json')) {
+            // Create history file
+            $this->fs->touch($this->manga . '/history.json');
+
+            $this->fs->dumpFile($this->manga . '/history.json', json_encode([]));
+        }
+
+        $this->done = json_decode(file_get_contents($this->manga . '/history.json'), true);
     }
 
 }
