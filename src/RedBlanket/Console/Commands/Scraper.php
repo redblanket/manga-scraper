@@ -176,8 +176,8 @@ class Scraper extends Command
                         $imgName = $parts[count($parts) - 1];
 
                         // Check if the image downloaded
-                        if (! file_exists($this->currentPath)) {
-                            $this->download($src, $this->currentPath, $imgName);
+                        if (! file_exists($this->currentPath . '/' . $imgName)) {
+                            $this->download($src, $this->currentPath . '/' . $imgName, $imgName);
                         }
                         else {
                             $this->skipFile($imgName);
