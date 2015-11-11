@@ -1,0 +1,18 @@
+#!/usr/bin/env php
+<?php
+
+date_default_timezone_set('Asia/Kuala_Lumpur');
+
+set_time_limit(0);
+ini_set('memory_limit', '2G');
+ini_set('allow_url_fopen', 1);
+
+require_once __DIR__.'/vendor/autoload.php';
+
+define('ROOT_PATH', __DIR__);
+
+$app = new \RedBlanket\Console\Commands\Application;
+$app->addCommands(array(
+    new \RedBlanket\Console\Commands\Scraper,
+));
+$app->run();
