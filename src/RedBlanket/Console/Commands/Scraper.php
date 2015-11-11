@@ -23,6 +23,7 @@ class Scraper extends Command
     protected $start_at;
     protected $end_at;
     protected $retry = 0;
+    protected $downloader;
 
     public function configure()
     {
@@ -52,6 +53,13 @@ class Scraper extends Command
                 InputOption::VALUE_REQUIRED,
                 'Set the last chapter to be fetched',
                 0
+            )
+            ->addOption(
+                'downloader',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Choose type of downloader: normal (file_get_contents) or cURL',
+                'normal'
             );
     }
 
@@ -67,8 +75,9 @@ class Scraper extends Command
         $this->output = $output;
         $this->input  = $input;
 
-        $this->start_at = $this->input->getOption('start') ? $this->input->getOption('start') : 0;
-        $this->end_at   = $this->input->getOption('end') ? $this->input->getOption('end') : 999;
+        $this->start_at   = $this->input->getOption('start') ? $this->input->getOption('start') : 0;
+        $this->end_at     = $this->input->getOption('end') ? $this->input->getOption('end') : 999;
+        $this->downloader = $this->input->getOption('downloader') ? $this->input->getOption('downloader') : $this->config['downloader'];
 
         // Get manga name
         $parts       = explode('/', $url);
@@ -108,11 +117,10 @@ class Scraper extends Command
                     $this->fs->mkdir($location);
                     $chapterLink = 'http://mangapanda.com' . $link;
 
-                    $ch = $this->crawler($chapterLink);
-                    $countImg = 1;
+                    $chapterPage = $this->crawler($chapterLink);
 
                     // Navigate page
-                    $ch->filter('#pageMenu')->children()->each(function ($child) use ($countImg, $location, $chapterLink) {
+                    $chapterPage->filter('#pageMenu')->children()->each(function ($child) use ($location, $chapterLink) {
 
                         $imgURL = 'http://mangapanda.com' . $child->attr('value');
 
@@ -123,22 +131,10 @@ class Scraper extends Command
                         $imx   = $this->crawler($imgURL);
                         $src   = $imx->filter('img#img:first-child')->attr('src');
 
-                        $parts = explode('/', $src);
+                        $parts   = explode('/', $src);
                         $imgName = $parts[count($parts) - 1];
 
-                        if (! file_exists($location . '/' . $imgName)) {
-
-                            $this->download($src, $location . '/' . $imgName);
-
-                            $this->output->writeln('Image: <info>' . $imgURL . '</info>');
-
-                            if ((int) $this->config['image_sleep'] > 0) {
-                                sleep((int) $this->config['image_sleep']);
-                            }
-                        }
-                        else {
-                            $this->output->writeln('Image: <info>' . $imgURL . '</info> <error>SKIPPED!</error>');
-                        }
+                        $this->download($src, $location . '/' . $imgName);
                     });
 
                     if ((int) $this->config['page_sleep'] > 0) {
@@ -147,13 +143,19 @@ class Scraper extends Command
                     }
                 } //
             });
-
         }
         catch (\Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
         }
     }
 
+    /**
+     * Fetch the contents
+     *
+     * @param $url
+     *
+     * @return DomCrawler
+     */
     private function crawler($url)
     {
         if ($this->retry > $this->config['max_retry']) {
@@ -175,25 +177,59 @@ class Scraper extends Command
         }
     }
 
+    /**
+     * Download the image file
+     *
+     * @param $url
+     * @param $location
+     */
     private function download($url, $location)
     {
-        switch ($this->config['downloader']) {
-            default:
-            case 'normal':
-                $this->downloadNormal($url, $location);
-                break;
+        $parts = explode('/', $url);
+        $name = $parts[count($parts) - 1];
 
-            case 'curl':
-                $this->downloadCurl($url, $location);
-                break;
+        if (! file_exists($location)) {
+
+            switch ($this->downloader) {
+                default:
+                case 'normal':
+                    $this->downloadNormal($url, $location);
+                    break;
+
+                case 'curl':
+                    $this->downloadCurl($url, $location);
+                    break;
+            }
+
+            $this->output->writeln('Image: <info>' . $name . '</info>');
+
+            if ((int) $this->config['image_sleep'] > 0) {
+                sleep((int) $this->config['image_sleep']);
+            }
         }
+        else {
+            $this->output->writeln('Image: <info>' . $name . '</info> <error>SKIPPED!</error>');
+        }
+
     }
 
+    /**
+     * Download file using Symfony\Filesystem
+     *
+     * @param $url
+     * @param $location
+     */
     private function downloadNormal($url, $location)
     {
-        file_put_contents($location, file_get_contents($url));
+        $this->fs->dumpFile($location, file_get_contents($url));
     }
 
+    /**
+     * Download file using cURL
+     *
+     * @param $url
+     * @param $location
+     */
     private function downloadCurl($url, $location)
     {
         $ch = curl_init($url);
@@ -204,4 +240,5 @@ class Scraper extends Command
         curl_close($ch);
         fclose($fp);
     }
+
 }
