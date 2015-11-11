@@ -99,8 +99,6 @@ class Scraper extends Command
                         $imgURL .= '/1';
                     }
 
-                    $this->output->writeln('Image: <info>' . $imgURL . '</info>');
-
                     $imgContent = $this->client->get($imgURL)->getBody()->getContents();
 
                     $imx = new Crawler($imgContent);
@@ -115,16 +113,20 @@ class Scraper extends Command
 
                         $this->download($src, $location . '/' . $imgName);
 
+                        $this->output->writeln('Image: <info>' . $imgURL . '</info>');
+
                         if ((int) $this->config['image_sleep'] > 0) {
                             sleep((int) $this->config['image_sleep']);
-                            $this->output->writeln('<fg=cyan>Preventing DDoS to Server ...</>');
                         }
+                    }
+                    else {
+                        $this->output->writeln('Image: <info>' . $imgURL . '</info> <error>SKIPPED!</error>');
                     }
                 });
 
                 if ((int) $this->config['page_sleep'] > 0) {
                     sleep((int) $this->config['page_sleep']);
-                    $this->output->writeln('<fg=cyan>Preventing DDoS to Server ...</>');
+                    $this->output->writeln('<fg=cyan>Plase wait ...</>');
                 }
             });
 
