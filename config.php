@@ -5,4 +5,6 @@ return [
     'image_sleep' => 3,
 
     'downloader' => 'normal',  // normal or curl
+
+    'max_retry' => 5,
 ];
