@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'page_sleep' => 5,
-    'image_sleep' => 5,
+    'page_sleep' => 10,
+    'image_sleep' => 3,
 
     'downloader' => 'normal',  // normal or curl
 ];
