@@ -24,6 +24,7 @@ class Scraper extends Command
     protected $end_at;
     protected $retry = 0;
     protected $downloader;
+    protected $done = [];
 
     public function configure()
     {
@@ -83,11 +84,15 @@ class Scraper extends Command
         $parts       = explode('/', $url);
         $mangaFolder = $parts[count($parts) - 1];
         $mangaName   = ucwords(str_replace('-', ' ', $mangaFolder));
+
         // Set the base folder path
         $this->manga = $path . '/' . $mangaFolder;
 
         // Create the folder
         $this->fs->mkdir($this->manga);
+
+        // Create history file
+        $this->fs->touch($this->manga . '/history.json');
 
         $this->output->writeln('');
         $this->output->writeln('<question> ' . $mangaName . ' </question>');
@@ -120,7 +125,7 @@ class Scraper extends Command
                     $chapterPage = $this->crawler($chapterLink);
 
                     // Navigate page
-                    $chapterPage->filter('#pageMenu')->children()->each(function ($child) use ($location, $chapterLink) {
+                    $chapterPage->filter('#pageMenu')->children()->each(function ($child) use ($location, $chapterLink, $chapterNum) {
 
                         $imgURL = 'http://mangapanda.com' . $child->attr('value');
 
@@ -134,7 +139,7 @@ class Scraper extends Command
                         $parts   = explode('/', $src);
                         $imgName = $parts[count($parts) - 1];
 
-                        $this->download($src, $location . '/' . $imgName);
+                        $this->download($src, $location . '/' . $imgName, $chapterNum, $imgName);
                     });
 
                     if ((int) $this->config['page_sleep'] > 0) {
@@ -182,22 +187,24 @@ class Scraper extends Command
      *
      * @param $url
      * @param $location
+     * @param $chapter
+     * @param $image
      */
-    private function download($url, $location)
+    private function download($url, $location, $chapter, $image)
     {
         $parts = explode('/', $url);
-        $name = $parts[count($parts) - 1];
+        $name  = $parts[count($parts) - 1];
 
         if (! file_exists($location)) {
 
             switch ($this->downloader) {
                 default:
                 case 'normal':
-                    $this->downloadNormal($url, $location);
+                    $this->downloadNormal($url, $location, $chapter, $image);
                     break;
 
                 case 'curl':
-                    $this->downloadCurl($url, $location);
+                    $this->downloadCurl($url, $location, $chapter, $image);
                     break;
             }
 
@@ -218,10 +225,31 @@ class Scraper extends Command
      *
      * @param $url
      * @param $location
+     * @param $chapter
+     * @param $image
      */
-    private function downloadNormal($url, $location)
+    private function downloadNormal($url, $location, $chapter, $image)
     {
-        $this->fs->dumpFile($location, file_get_contents($url));
+        $content = null;
+
+        if ($this->retry > $this->config['max_retry']) {
+            $this->output->writeln('<error>Maximum retry reached! Try again later.');
+            die;
+        }
+
+        try {
+            $content = file_get_contents($url);
+
+            $this->fs->dumpFile($location, $content);
+
+            $this->writeHistory($chapter, $image);
+        }
+        catch (\Exception $e) {
+            // Retry
+            $this->downloadNormal($url, $location);
+
+            $this->retry++;
+        }
     }
 
     /**
@@ -229,16 +257,39 @@ class Scraper extends Command
      *
      * @param $url
      * @param $location
+     * @param $chapter
+     * @param $image
      */
-    private function downloadCurl($url, $location)
+    private function downloadCurl($url, $location, $chapter, $image)
     {
-        $ch = curl_init($url);
-        $fp = fopen($location, 'wb');
-        curl_setopt($ch, CURLOPT_FILE, $fp);
-        curl_setopt($ch, CURLOPT_HEADER, 0);
-        curl_exec($ch);
-        curl_close($ch);
-        fclose($fp);
+        if ($this->retry > $this->config['max_retry']) {
+            $this->output->writeln('<error>Maximum retry reached! Try again later.');
+            die;
+        }
+
+        try {
+            $ch = curl_init($url);
+            $fp = fopen($location, 'wb');
+            curl_setopt($ch, CURLOPT_FILE, $fp);
+            curl_setopt($ch, CURLOPT_HEADER, 0);
+            curl_exec($ch);
+            curl_close($ch);
+            fclose($fp);
+
+            $this->writeHistory($chapter, $image);
+        }
+        catch (\Exception $e) {
+            $this->downloadCurl($url, $location);
+
+            $this->retry++;
+        }
+    }
+
+    private function writeHistory($chapter, $image)
+    {
+        $this->done[$chapter][] = $image;
+
+        $this->fs->dumpFile($this->manga . '/history.json', json_encode($this->done));
     }
 
 }
