@@ -14,32 +14,95 @@ use Symfony\Component\Filesystem\Filesystem;
 
 class Scraper extends Command
 {
-    protected $client;
-    protected $config;
-    protected $fs;
-    protected $input;
-    protected $manga;
-    protected $output;
-    protected $start_at;
-    protected $end_at;
-    protected $retry = 0;
-    protected $downloader;
-    protected $done = [];
+    /**
+     * @var string Base path where we will store the files
+     */
+    protected $base;
 
+    /**
+     * @var string The folder name for currently fetched comic
+     */
+    protected $folder;
+
+    /**
+     * @var string The name of the comic
+     */
+    protected $name;
+
+    /**
+     * @var string Current comic URL
+     */
+    protected $currentUrl;
+
+    /**
+     * @var string Current path to save the file
+     */
+    protected $currentPath;
+
+    /**
+     * @var \GuzzleHttp\Client
+     */
+    protected $client;
+
+    /**
+     * @var array List of config values
+     */
+    protected $config;
+
+    /**
+     * @var \Symfony\Component\Filesystem\Filesystem
+     */
+    protected $fs;
+
+    /**
+     * @var \Symfony\Component\Console\Input\InputInterface
+     */
+    protected $input;
+
+    /**
+     * @var \Symfony\Component\Console\Output\OutputInterface
+     */
+    protected $output;
+
+    /**
+     * @var string The chapter to start fetching
+     */
+    protected $start_at;
+
+    /**
+     * @var string The chapter to stop fetching
+     */
+    protected $end_at;
+
+    /**
+     * @var int Number of current retries
+     */
+    protected $retry = 0;
+
+    /**
+     * Configure the app
+     */
     public function configure()
     {
         $this
             ->setName('run')
-            ->setDescription('MangaPanda image scrapper')
+            ->setDescription('Manga Panda Scraper')
             ->addArgument(
                 'url',
                 InputArgument::REQUIRED,
-                'A URL to scrape data from'
+                'A URL to scrape data from. Basically it\'s the page with the list of chapter links.'
             )
-            ->addArgument(
+            ->addOption(
                 'path',
-                InputArgument::OPTIONAL,
+                null,
+                InputOption::VALUE_REQUIRED,
                 'Full path where to store the files'
+            )
+            ->addOption(
+                'folder',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Set the folder name for the comic. If not set, we will use the default name base on the comic URL.'
             )
             ->addOption(
                 'start',
@@ -53,46 +116,32 @@ class Scraper extends Command
                 null,
                 InputOption::VALUE_REQUIRED,
                 'Set the last chapter to be fetched',
-                0
+                999
             );
     }
 
+    /**
+     * Run the command
+     *
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     *
+     * @return int|null|void
+     */
     public function execute(InputInterface $input, OutputInterface $output)
     {
-        $this->client = new Client;
-        $this->config = include_once(ROOT_PATH . '/config.php');
-        $this->fs     = new Filesystem;
-        $this->output = $output;
-        $this->input  = $input;
-
-        $this->start_at   = $this->input->getOption('start') ? $this->input->getOption('start') : 0;
-        $this->end_at     = $this->input->getOption('end') ? $this->input->getOption('end') : 999;
-
-        $url  = $this->input->getArgument('url');
-        $path = $this->input->getArgument('path') ? $input->getArgument('path') : $this->config['download_path'];
-        $path = rtrim($path, '/');
-
-        // Get manga name
-        $parts       = explode('/', $url);
-        $mangaFolder = $parts[count($parts) - 1];
-        $mangaName   = ucwords(str_replace('-', ' ', $mangaFolder));
-
-        // Set the base folder path
-        $this->manga = $path . '/' . $mangaFolder;
-
-        // Create the folder
-        $this->fs->mkdir($this->manga);
+        $this->init($input, $output);
 
         $this->output->writeln('');
-        $this->output->writeln('<question> ' . $mangaName . ' </question>');
+        $this->output->writeln('<question> ' . $this->name . ' </question>');
         $this->output->writeln('');
 
         try {
 
-            // Get chapters link from main manga page
-            $comic = $this->fetchContent($url);
+            // Get chapters link from main comic page
+            $comic = $this->fetchContent($this->currentUrl);
 
-            $comic->filter('#listing tr td:first-child')->each( function($node) {
+            $comic->filter($this->config['table_of_content_filter'])->each( function($node) {
 
                 $link = $node->filter('a')->first()->attr('href');
 
@@ -103,32 +152,32 @@ class Scraper extends Command
                     $this->output->writeln('<comment>Chapter ' . $chapterNum . '</comment>');
 
                     // Set folder location
-                    $location = $this->manga . '/' . str_pad($chapterNum, 3, 0, STR_PAD_LEFT);
+                    $this->setCurrentPath($chapterNum);
 
                     // Create chapter folder
-                    $this->fs->mkdir($location);
-                    $chapterLink = 'http://mangapanda.com' . $link;
+                    $this->fs->mkdir($this->currentPath);
+                    $chapterLink = $this->config['base_url'] . $link;
 
                     $chapterPage = $this->fetchContent($chapterLink);
 
                     // Navigate page
-                    $chapterPage->filter('#pageMenu')->children()->each(function ($child) use ($location, $chapterLink, $chapterNum) {
+                    $chapterPage->filter('#pageMenu')->children()->each(function ($child) use ($chapterLink, $chapterNum) {
 
-                        $imgURL = 'http://mangapanda.com' . $child->attr('value');
+                        $imgURL = $this->config['base_url'] . $child->attr('value');
 
                         if ($imgURL == $chapterLink) {
                             $imgURL .= '/1';
                         }
 
                         $imx   = $this->fetchContent($imgURL);
-                        $src   = $imx->filter('img#img:first-child')->attr('src');
+                        $src   = $imx->filter($this->config['image_page_filter'])->attr('src');
 
                         $parts   = explode('/', $src);
                         $imgName = $parts[count($parts) - 1];
 
                         // Check if the image downloaded
-                        if (! file_exists($location . '/' . $imgName)) {
-                            $this->download($src, $location . '/' . $imgName, $imgName);
+                        if (! file_exists($this->currentPath)) {
+                            $this->download($src, $this->currentPath, $imgName);
                         }
                         else {
                             $this->skipFile($imgName);
@@ -143,11 +192,48 @@ class Scraper extends Command
             });
 
             $this->output->writeln('');
-            $this->output->writeln('<fg=cyan>DONE!</>');
+            $this->output->writeln('All done. Enjoy!');
         }
         catch (\Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
         }
+    }
+
+    /**
+     * Initialize
+     *
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     */
+    private function init(InputInterface $input, OutputInterface $output)
+    {
+        $this->client    = new Client;
+        $this->config    = include_once(ROOT_PATH . '/config.php');
+
+        $this->fs        = new Filesystem;
+        $this->output    = $output;
+        $this->input     = $input;
+
+        // Get starting chapter
+        $this->start_at   = $this->input->getOption('start') ? $this->input->getOption('start') : 0;
+
+        // Get ending chapter
+        $this->end_at     = $this->input->getOption('end') ? $this->input->getOption('end') : 999;
+
+        $this->currentUrl = $this->input->getArgument('url');
+        $path             = $this->input->getOption('path') ? $this->input->getOption('path') : $this->config['download_path'];
+        $path             = rtrim($path, '/');
+
+        // Get comic name
+        $parts        = explode('/', $this->currentUrl);
+        $this->folder = $this->input->getOption('folder') ? $this->input->getOption('folder') : $parts[count($parts) - 1];
+        $this->name   = ucwords(str_replace('-', ' ', $this->folder));
+
+        // Set the base folder path
+        $this->base = $path . '/' . $this->folder;
+
+        // Create the folder
+        $this->fs->mkdir($this->base);
     }
 
     /**
@@ -189,6 +275,7 @@ class Scraper extends Command
     {
         $content = null;
 
+        // Retries if the fetching fails. Untested, and might not reliable.
         if ($this->retry > $this->config['max_retry']) {
             $this->output->writeln('<error>Maximum retry reached! Try again later.');
             die;
@@ -197,6 +284,7 @@ class Scraper extends Command
         try {
             $content = file_get_contents($url);
 
+            // Write the file to disk
             $this->fs->dumpFile($location, $content);
 
             $this->output->writeln('Image: <info>' . $image . '</info>');
@@ -235,6 +323,16 @@ class Scraper extends Command
         $chapterNum = $parts[count($parts) - 1];
 
         return $chapterNum;
+    }
+
+    /**
+     * Set current download path
+     *
+     * @param $chapter
+     */
+    private function setCurrentPath($chapter)
+    {
+        $this->currentPath = $this->base . '/' . str_pad($chapter, 3, 0, STR_PAD_LEFT);
     }
 
 }
