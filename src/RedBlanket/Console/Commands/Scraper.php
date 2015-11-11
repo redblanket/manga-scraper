@@ -42,26 +42,28 @@ class Scraper extends Command
         $path = $input->getArgument('path');
         $path = rtrim($path, '/');
 
+        $this->client = new Client;
         $this->config = include_once(ROOT_PATH . '/config.php');
         $this->fs     = new Filesystem;
         $this->output = $output;
 
         // Get manga name
-        $parts = explode('/', $url);
-        $mangaName = $parts[count($parts) - 1];
-
+        $parts       = explode('/', $url);
+        $mangaFolder = $parts[count($parts) - 1];
+        $mangaName   = ucwords(str_replace('-', ' ', $mangaFolder));
         // Set the base folder path
-        $this->manga = $path . '/' . $mangaName;
+        $this->manga = $path . '/' . $mangaFolder;
 
         // Create the folder
         $this->fs->mkdir($this->manga);
 
-        $this->output->writeln('Manga: <question>' . $mangaName . '</question>');
+        $this->output->writeln('');
+        $this->output->writeln(' <question>' . $mangaName . '</question> ');
+        $this->output->writeln('');
 
         try {
 
-            $this->client = new Client;
-
+            // Get chapters link from main manga page
             $content = $this->client->get($url)->getBody()->getContents();
 
             $crawler = new Crawler($content);
@@ -82,7 +84,7 @@ class Scraper extends Command
 
                 $chapterLink = 'http://mangapanda.com' . $link;
 
-                $this->output->writeln('Page:  <comment>' . $chapterLink . '</comment>');
+                $this->output->writeln('<comment>Chapter ' . $chapterNum . '</comment>');
 
                 $chContent = $this->client->get($chapterLink)->getBody()->getContents();
 
@@ -126,13 +128,13 @@ class Scraper extends Command
 
                 if ((int) $this->config['page_sleep'] > 0) {
                     sleep((int) $this->config['page_sleep']);
-                    $this->output->writeln('<fg=cyan>Plase wait ...</>');
+                    $this->output->writeln('<fg=cyan>Please wait ...</>');
                 }
             });
 
         }
         catch (\Exception $e) {
-            $output->writeln($e->getMessage());
+            $output->writeln('<error>' . $e->getMessage() . '</error>');
         }
     }
 
