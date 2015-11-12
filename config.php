@@ -3,6 +3,7 @@
 return [
 
     // default download path, can be override from command
+    // no trailing slash, please
     'download_path' => '/path/to/your/storage/disk',
 
     // How long to pause between chapter
