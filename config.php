@@ -3,7 +3,7 @@
 return [
 
     // default download path, can be override from command
-    'download_path' => '/Volumes/Storage HD/Comics',
+    'download_path' => '/path/to/your/storage/disk',
 
     // How long to pause between chapter
     'page_sleep' => 10,
