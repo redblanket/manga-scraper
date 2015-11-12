@@ -2,63 +2,113 @@
 
 Get images from [MangaPanda](http://mangapanda.com), [MangaReader](http://mangareader.net) or [MangaFox](http://mangafox.me) and save it for offline reading.
 
+**Use it for educational purpose only!**
+
 ## Usage
 
-Get the table of content page URL, for example:
+```
+./scraper run <url>
+```
 
-```http://mangapanda.com/naruto```
+### Basic command
 
-Now run the command:
+```
+// mangapanda
+./scraper run http://mangapanda.com/naruto
 
-```./scraper run http://mangapanda.com/naruto```
+// mangareader
+./scraper run http://mangareader.net/naruto
 
-### Configuration
+// mangafox
+./scraper run http://mangafox.me/manga/naruto/
+
+```
+
+### Set folder name
+
+You can set the folder name for the images. By default, the folder name created based on comic/manga name from URI.
+
+```
+./scraper run http://mangapanda.com/naruto --folder=Naruto
+
+./scraper run http://mangafox.me/manga/one_piece/ --folder="One Piece"
+```
+
+### Custom save path
+
+Set custom save path, different from defined in your *config.php* file. 
+
+```
+./scraper run http://mangapanda.com/naruto --path=/Users/syahzul/Documents/Manga
+
+./scraper run http://mangafox.me/manga/one_piece/ --path="C:\My Documents\Comics"
+```
+
+### Start chapter
+
+Set the chapter to start. This is useful when your previous download stopped and you want to resume the downloads. 
+
+```
+./scraper run http://mangapanda.com/naruto --start=10
+```
+
+***Note:***
+*You can combine with ```--end``` option. See below.*
+
+### End chapter
+
+Set the chapter to end. This is useful when you want to limit fetching process.
+
+```
+./scraper run http://mangapanda.com/naruto --end=20
+```
+
+***Note:***
+*You can combine with ```--start``` option. See above.*
+
+
+### Argument
+
+<dl>
+	<dt>url</dt>
+	<dd>URL to the comic/manga list of chapter links.
+</dl>
+
+
+## Configuration
 
 There are some basic configuration for the app that you need to check out.
 
-```base_url```
+<dl>
+	<dt>download_path</dt>
+	<dd>Default location where you want to store your files. The value can be overridden using option <code>--path</code>.</dd>
 
-This is the base URL to the comic/manga website. Refer to supported website below.
+	<dt>page_sleep</dt>
+	<dd>Delay between chapters.</dd>
 
-```download_path```
-
-Default location where you want to store your files. The value can be overridden using option ```--path```.
-
-```table_of_content_filter```
-
-The CSS selector to the table of content page. This is the element where we need to fetch all the chapter links.
-
-```image_page_filter```
-
-CSS selector for single image page. This is where the full image is shown, and we need the filter to download the image.
-
-```page_sleep```
-
-Delay between chapters. 
-
-```image_sleep```
-
-Delay between images. 
-
+	<dt>image_sleep</dt>
+	<dd>Delay between images.</dd>
+</dl>
 
 ### Options
 
-```--path="/full/path/to/your/own/folder"```
+<dl>
 
-Set where to store the files using the option ```--path```. 
+	<dt>--path="/full/path/to/disk"</dt>
+	<dd>Set where to store the files. Specify full path to the <strong>parent</strong> folder.</code></dd>
 
+	<dt>--folder="name of your comic folder"</dt>
+	<dd>Set the folder name manually using this option. If it's not set, the folder will be created based on comic/manga name from URI.</dd>
 
-```--folder="name of your comic folder"```
+	<dt>--start=num</dt>
 
-Set the folder name manually using this option. If it's not set, the app will be using the URI to the comic page.
+	<dd>Set the starting chapter to be fetched. For example, if you need to start from chapter 3, you can set <code>--start=3</code> on the command.</dd>
 
-```--start=num```
+	<dt>--end=num</dt>
 
-Set the starting chapter to be fetched. For example, if you need to start from chapter 3, you can set ```--start=3``` on the command.
-
-```--end=num```
-
-Same with ```--start``` option, except this will be the last chapter to be fetched.
+	<dd>Same with <code>--start</code> option, except this will be the last chapter to be fetched.</dd>
+	
+</dl>	
 
 ## Supported Website
 
@@ -68,7 +118,13 @@ Same with ```--start``` option, except this will be the last chapter to be fetch
 
 ## License
 
-MIT License
+Open-sourced software licensed under the [MIT license](http://opensource.org/licenses/MIT).
+
+## Note
+
+The main purpose I'm building this app is to learn building console app using [Symfony Console](http://symfony.com/doc/current/components/console/index.html) component and some other packages like [Guzzle](https://github.com/guzzle/guzzle). 
+
+**Use it at your own risk!**
 
 ## Copyright
 
