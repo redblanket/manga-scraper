@@ -86,7 +86,7 @@ class Scraper extends Command
     {
         $this
             ->setName('run')
-            ->setDescription('Manga Panda Scraper')
+            ->setDescription('Manga Scraper')
             ->addArgument(
                 'url',
                 InputArgument::REQUIRED,

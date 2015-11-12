@@ -1,6 +1,6 @@
-# MangaPanda Scraper
+# Manga Scraper
 
-Get images from [MangaPanda](http://mangapanda.com) or [MangaReader](http://mangareader.net), and save it for offline reading.
+Get images from [MangaPanda](http://mangapanda.com), [MangaReader](http://mangareader.net) or [MangaFox](http://mangafox.me) and save it for offline reading.
 
 ## Usage
 
@@ -18,7 +18,7 @@ There are some basic configuration for the app that you need to check out.
 
 ```base_url```
 
-This is the base URL to the comic/manga website. For now, only **http://mangapanda.com** and **http://mangareader.net** are tested.
+This is the base URL to the comic/manga website. Refer to supported website below.
 
 ```download_path```
 
@@ -60,6 +60,12 @@ Set the starting chapter to be fetched. For example, if you need to start from c
 
 Same with ```--start``` option, except this will be the last chapter to be fetched.
 
+## Supported Website
+
+* [MangaPanda](http://mangapanda.com)
+* [MangaReader](http://mangareader.net)
+* [MangaFox](http://mangafox.me)
+
 ## License
 
 MIT License
@@ -67,4 +73,3 @@ MIT License
 ## Copyright
 
 All comic/manga is copyrighted to their respective author. Please buy the comic/manga if it's available in your country.
-
