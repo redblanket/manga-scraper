@@ -152,11 +152,15 @@ class Scraper extends Command
     private function init(InputInterface $input, OutputInterface $output)
     {
         $this->client    = new Client;
-        $this->config    = $this->getConfig();
-
         $this->fs        = new Filesystem;
         $this->output    = $output;
         $this->input     = $input;
+        $this->config    = $this->getConfig();
+
+        if ($this->config['download_path'] == '/path/to/your/storage/disk') {
+            $this->output->writeln('<error>Please set your download_path in config.php file!</error>');
+            die;
+        }
 
         // Get starting chapter
         $this->start_at   = $this->input->getOption('start') ? $this->input->getOption('start') : 0;
@@ -172,7 +176,6 @@ class Scraper extends Command
         $parts        = explode('/', $this->url);
         $this->folder = $this->input->getOption('folder') ? $this->input->getOption('folder') : $parts[count($parts) - 1];
         $this->folder = str_replace('_', '-', $this->folder);
-//        $this->name   = ucwords(str_replace('-', ' ', $this->folder));
 
         // Set the base folder path
         $this->base = $path . '/' . $this->folder;
@@ -197,6 +200,9 @@ class Scraper extends Command
      */
     private function getConfig()
     {
+        if (file_exists(ROOT_PATH . '/config.local.php')) {
+            return ROOT_PATH . '/config.local.php';
+        }
         return include_once(ROOT_PATH . '/config.php');
     }
 
