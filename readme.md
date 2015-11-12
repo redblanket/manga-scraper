@@ -71,7 +71,7 @@ Set the chapter to end. This is useful when you want to limit fetching process.
 
 <dl>
 	<dt>url</dt>
-	<dd>URL to the comic/manga list of chapter links.
+	<dd>URL to the comic/manga list of chapter links.</dd>
 </dl>
 
 
