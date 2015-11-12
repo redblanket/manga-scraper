@@ -6,8 +6,8 @@ use Symfony\Component\Console\Application as BaseApplication;
 
 class Application extends BaseApplication
 {
-    const NAME = 'Manga Panda Scraper';
-    const VERSION = '1.0.5';
+    const NAME = 'Manga Scraper';
+    const VERSION = '1.1.0';
 
     public function __construct()
     {
