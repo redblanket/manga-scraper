@@ -201,9 +201,9 @@ class Scraper extends Command
     private function getConfig()
     {
         if (file_exists(ROOT_PATH . '/config.local.php')) {
-            return ROOT_PATH . '/config.local.php';
+            return include_once ROOT_PATH . '/config.local.php';
         }
-        return include_once(ROOT_PATH . '/config.php');
+        return include_once ROOT_PATH . '/config.php';
     }
 
     /**
