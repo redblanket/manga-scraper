@@ -1,3 +1,4 @@
 composer.lock
 config.local.php
+scraper.phar
 /vendor
