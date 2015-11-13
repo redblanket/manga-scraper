@@ -46,7 +46,7 @@ You can set the folder name for the images. By default, the folder name created 
 
 ### Custom save path
 
-Set custom save path, different from defined in your *config.php* file. 
+Set custom save path, different from defined in your *config.local.php* file.
 
 ```
 ./scraper run http://mangapanda.com/naruto --path=/Users/syahzul/Documents/Manga
