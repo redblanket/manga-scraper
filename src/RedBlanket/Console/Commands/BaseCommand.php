@@ -102,42 +102,6 @@ abstract class BaseCommand extends Command
         $this->output    = $output;
         $this->input     = $input;
         $this->config    = $this->getConfig();
-
-        // Get starting chapter
-        $this->start_at   = $this->input->getOption('start') ? $this->input->getOption('start') : 0;
-
-        // Get ending chapter
-        $this->end_at     = $this->input->getOption('end') ? $this->input->getOption('end') : 999;
-
-        // Save current URL to meta array
-        $this->meta['url'] = rtrim($this->input->getArgument('url'), '/');
-
-        // Get the download path, if available, or use default value from config.local.php
-        $path             = $this->input->getOption('path') ? $this->input->getOption('path') : $this->config['download_path'];
-        $path             = rtrim($path, '/');
-
-        // Get comic name
-        $parts        = explode('/', $this->meta['url']);
-        $this->folder = $this->input->getOption('folder') ? $this->input->getOption('folder') : $parts[count($parts) - 1];
-        $this->folder = str_replace('_', '-', $this->folder);
-
-        // Set the base folder path
-        $this->base = $path . '/' . $this->folder;
-
-        // Create the folder
-        $this->fs->mkdir($this->base);
-
-        $sources = include_once ROOT_PATH . '/src/RedBlanket/Config/sources.php';
-
-        foreach ($sources as $key => $config) {
-            if (strstr($this->meta['url'], $key)) {
-                $this->config = array_merge($this->config, $config, ['type' => $key]);
-                continue;
-            }
-        }
-
-        // Get the TOC page
-        $this->crawler = $this->fetchContent($this->meta['url']);
     }
 
     /**
@@ -162,11 +126,6 @@ abstract class BaseCommand extends Command
         }
 
         return include_once ROOT_PATH . '/config.local.php';
-
-//        if (file_exists(ROOT_PATH . '/config.local.php')) {
-//            return include_once ROOT_PATH . '/config.local.php';
-//        }
-//        return include_once ROOT_PATH . '/config.php';
     }
 
     /**
@@ -216,11 +175,6 @@ abstract class BaseCommand extends Command
 
         try {
             $content = file_get_contents($url);
-
-            // Write the file to disk
-            $this->fs->dumpFile($location, $content);
-
-            $this->output->writeln('Image: <info>' . $image . '</info>');
         }
         catch (\Exception $e) {
             // Retry
@@ -228,6 +182,11 @@ abstract class BaseCommand extends Command
 
             $this->retry++;
         }
+
+        // Write the file to disk
+        $this->fs->dumpFile($location, $content);
+
+        $this->output->writeln('Image: <info>' . $image . '</info>');
 
         if ((int) $this->config['image_sleep'] > 0) {
             sleep((int) $this->config['image_sleep']);
@@ -276,10 +235,12 @@ abstract class BaseCommand extends Command
 
     /**
      * Get images
+     *
+     * @param $links array
      */
-    protected function getImages()
+    protected function getImages($links)
     {
-        foreach ($this->chapterLinks as $link) {
+        foreach ($links as $link) {
 
             $chapterNum = $this->getChapterNum($link);
 
@@ -322,7 +283,17 @@ abstract class BaseCommand extends Command
                                 $this->download($src, $this->currentPath . '/' . $imgName, $imgName);
                             }
                             else {
-                                $this->skipFile($imgName);
+                                // compare hash
+                                $remoteFile = md5_file($src);
+                                $localFile  = md5_file($this->currentPath . '/' . $imgName);
+
+                                if ($remoteFile == $localFile) {
+                                    $this->skipFile($imgName);
+                                }
+                                else {
+                                    $this->download($src, $this->currentPath . '/' . $imgName, $imgName);
+                                }
+                                
                             }
                         }
                     }
