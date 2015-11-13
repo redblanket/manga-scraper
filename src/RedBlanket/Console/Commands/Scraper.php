@@ -187,7 +187,7 @@ class Scraper extends Command
         // Create the folder
         $this->fs->mkdir($this->base);
 
-        $sources = include_once ROOT_PATH . '/sources.php';
+        $sources = include_once ROOT_PATH . '/src/RedBlanket/Config/sources.php';
 
         foreach ($sources as $key => $config) {
             if (strstr($this->meta['url'], $key)) {
