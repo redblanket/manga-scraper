@@ -4,6 +4,22 @@ Get images from [MangaPanda](http://mangapanda.com), [MangaReader](http://mangar
 
 **Use it for educational purpose only!**
 
+## What's new
+
+* Download method for all website has been merged.
+* Do extra checking for input option ```--start``` and ```--end``` to make sure the value is valid.
+* Create metadata file to save some information about the comic/manga.
+
+## Installation
+
+Run these command to install:
+
+```
+git clone https://github.com/redblanket/manga-scraper.git
+cd manga-scaper
+composer install
+```
+
 ## Usage
 
 ```
