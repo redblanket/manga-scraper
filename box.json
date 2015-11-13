@@ -1,0 +1,8 @@
+{
+  "files": [
+    "src/RedBlanket/Console/Commands/Application.php",
+    "src/RedBlanket/Console/Commands/Scraper.php"],
+  "main": "scraper",
+  "output": "scraper.phar",
+  "stub": true
+}
