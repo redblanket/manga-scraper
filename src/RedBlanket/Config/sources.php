@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * WARNING:
+ *
+ * Do not change any values in this file, unless you know what you're doing.
+ */
+
 return [
 
     'mangapanda' => [
