@@ -423,8 +423,14 @@ class Scraper extends Command
      */
     private function getTitle($content)
     {
+        $pattern = [
+            '/Manga/i',
+            '/Manhwa/i',
+            '/Manhua/i'
+        ];
+
         $title = $content->filter($this->config['title_filter'])->first()->text();
-        return ucwords(strtolower(str_replace(' Manga', '', $title)));
+        return ucwords(strtolower(preg_replace($pattern, '', $title)));
     }
 
     /**
