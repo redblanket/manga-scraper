@@ -4,7 +4,7 @@ return [
 
     // default download path, can be override from command
     // no trailing slash, please
-    'download_path' => '/path/to/your/storage/disk',
+    'download_path' => '{DOWNLOAD_PATH}',
 
     // How long to pause between chapter
     'page_sleep' => 10,

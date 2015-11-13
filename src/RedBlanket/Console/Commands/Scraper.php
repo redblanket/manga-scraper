@@ -9,6 +9,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\DomCrawler\Crawler as DomCrawler;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -164,11 +165,6 @@ class Scraper extends Command
         $this->input     = $input;
         $this->config    = $this->getConfig();
 
-        if ($this->config['download_path'] == '/path/to/your/storage/disk') {
-            $this->output->writeln('<error>Please set your download_path in config.php file!</error>');
-            die;
-        }
-
         // Get starting chapter
         $this->start_at   = $this->input->getOption('start') ? $this->input->getOption('start') : 0;
 
@@ -211,10 +207,26 @@ class Scraper extends Command
      */
     private function getConfig()
     {
-        if (file_exists(ROOT_PATH . '/config.local.php')) {
-            return include_once ROOT_PATH . '/config.local.php';
+        if (! file_exists(ROOT_PATH . '/config.local.php')) {
+
+            $path = $this->askDownloadPath();
+
+            $stub = file_get_contents(ROOT_PATH . '/src/RedBlanket/Stubs/config.txt');
+            $stub = str_replace('{DOWNLOAD_PATH}', $path, $stub);
+
+            $this->fs->dumpFile(ROOT_PATH . '/config.local.php', $stub);
+
+            $this->output->writeln('Default download location is set to <info>' . $path . '</info>. You can change the value in <comment>' . ROOT_PATH . '/config.local.php' . '</comment> file.');
+            $this->output->writeln('');
+
         }
-        return include_once ROOT_PATH . '/config.php';
+
+        return include_once ROOT_PATH . '/config.local.php';
+
+//        if (file_exists(ROOT_PATH . '/config.local.php')) {
+//            return include_once ROOT_PATH . '/config.local.php';
+//        }
+//        return include_once ROOT_PATH . '/config.php';
     }
 
     /**
@@ -543,6 +555,29 @@ class Scraper extends Command
             return $parts[count($parts) - 1];
         }
         return $value;
+    }
+
+    /**
+     * Ask default download path on first run
+     *
+     * @return string
+     */
+    private function askDownloadPath()
+    {
+        $helper = $this->getHelper('question');
+
+        $this->output->writeln("\nNo configuration file found. Please enter full path to store the files.\n");
+        $question = new Question('<question>Path</question>: ');
+
+        $path =  $helper->ask($this->input, $this->output, $question);
+
+        if (! is_dir($path)) {
+            $this->output->writeln('<error>Invalid path! Please try again.</error>');
+
+            $this->askDownloadPath();
+        }
+
+        return rtrim($path, '/');
     }
 
 }
