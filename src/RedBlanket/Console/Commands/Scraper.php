@@ -25,11 +25,6 @@ class Scraper extends Command
     protected $folder;
 
     /**
-     * @var string Current comic URL
-     */
-    protected $url;
-
-    /**
      * @var string Current path to save the file
      */
     protected $currentPath;
@@ -83,6 +78,11 @@ class Scraper extends Command
      * @var \Symfony\Component\DomCrawler\Crawler
      */
     protected $crawler;
+
+    /**
+     * @var integer Store comic meta to be written on meta.json
+     */
+    protected $meta;
 
     /**
      * Configure the app
@@ -140,6 +140,7 @@ class Scraper extends Command
         try {
             $this->getChapterLinks();
             $this->getImages();
+            $this->writeMeta();
 
             $this->output->writeln('');
             $this->output->writeln('All done. Enjoy!');
@@ -174,12 +175,13 @@ class Scraper extends Command
         // Get ending chapter
         $this->end_at     = $this->input->getOption('end') ? $this->input->getOption('end') : 999;
 
-        $this->url        = rtrim($this->input->getArgument('url'), '/');
+        $this->meta['url'] = rtrim($this->input->getArgument('url'), '/');
+
         $path             = $this->input->getOption('path') ? $this->input->getOption('path') : $this->config['download_path'];
         $path             = rtrim($path, '/');
 
         // Get comic name
-        $parts        = explode('/', $this->url);
+        $parts        = explode('/', $this->meta['url']);
         $this->folder = $this->input->getOption('folder') ? $this->input->getOption('folder') : $parts[count($parts) - 1];
         $this->folder = str_replace('_', '-', $this->folder);
 
@@ -192,11 +194,14 @@ class Scraper extends Command
         $sources = include_once ROOT_PATH . '/sources.php';
 
         foreach ($sources as $key => $config) {
-            if (strstr($this->url, $key)) {
+            if (strstr($this->meta['url'], $key)) {
                 $this->config = array_merge($this->config, $config, ['type' => $key]);
                 continue;
             }
         }
+
+        // Get the TOC page
+        $this->crawler = $this->fetchContent($this->meta['url']);
     }
 
     /**
@@ -322,78 +327,21 @@ class Scraper extends Command
      */
     private function getImages()
     {
-        switch ($this->config['type']) {
-
-            case 'mangafox':
-                $this->getMangaFox();
-                break;
-
-            case 'mangapanda':
-            case 'mangareader':
-            default:
-                $this->getMangaPanda();
-                break;
+        // If starting chapter is lower than the first available chapter
+        if ($this->start_at < $this->meta['first']) {
+            $this->output->writeln('<error>Starting chapter ' . $this->start_at . ' is not available!</error>');
+            die;
         }
-    }
-
-    /**
-     * Get images from mangapanda.com or mangareader.net
-     */
-    private function getMangaPanda()
-    {
-        $this->showChapterTitle($this->crawler);
-
-        foreach ($this->chapterLinks as $link) {
-            $chapterNum = $this->getChapterNum($link);
-
-            if ($chapterNum >= $this->start_at AND $chapterNum <= $this->end_at) {
-
-                $this->output->writeln('<comment>Chapter ' . $chapterNum . '</comment>');
-
-                // Set folder location
-                $this->setCurrentPath($chapterNum);
-
-                // Create chapter folder
-                $this->fs->mkdir($this->currentPath);
-
-                $chapterLink = $this->config['base_url'] . $link;
-                $chapterPage = $this->fetchContent($chapterLink);
-
-                // Navigate page
-                $chapterPage->filter($this->config['pages_list_filter'])->children()->each(function ($child) use ($chapterLink, $chapterNum) {
-
-                    $imgURL = $this->config['base_url'] . $child->attr('value');
-
-                    if ($imgURL == $chapterLink) {
-                        $imgURL .= '/1';
-                    }
-
-                    $imx = $this->fetchContent($imgURL);
-                    $src = $imx->filter($this->config['image_page_filter'])->attr('src');
-
-                    $parts   = explode('/', $src);
-                    $imgName = $parts[count($parts) - 1];
-
-                    // Check if the image downloaded
-                    if (! file_exists($this->currentPath . '/' . $imgName)) {
-                        $this->download($src, $this->currentPath . '/' . $imgName, $imgName);
-                    }
-                    else {
-                        $this->skipFile($imgName);
-                    }
-                });
-
-                $this->showPageSleep();
-            } //
+        // If starting chapter is higher than the latest available chapter
+        elseif ($this->start_at > $this->meta['latest']) {
+            $this->output->writeln('<error>Chapter ' . $this->start_at . ' is not available!</error>');
+            die;
         }
-    }
-
-    /**
-     * Get images from mangafox.me
-     */
-    private function getMangaFox()
-    {
-        $this->chapterLinks = array_reverse($this->chapterLinks);
+        // If starting chapter is higher than the ending chapter
+        elseif ($this->start_at > $this->end_at) {
+            $this->output->writeln('<error>Starting chapter cannot be higher value than ending chapter!</error>');
+            die;
+        }
 
         $this->showChapterTitle($this->crawler);
 
@@ -410,6 +358,9 @@ class Scraper extends Command
 
                 // Create chapter folder
                 $this->fs->mkdir($this->currentPath);
+
+                // Get proper chapter URL
+                $link = $this->getChapterLink($link);
 
                 // Get the content
                 $chapterPage = $this->fetchContent($link);
@@ -417,26 +368,24 @@ class Scraper extends Command
                 // Navigate page
                 $chapterPage->filter($this->config['pages_list_filter'])->children()->each(function ($child) use ($link, $chapterNum) {
 
-                    $urlParts = explode('/', $link);
+                    $value = $this->getDropdownValue($child->attr('value'));
 
-                    unset($urlParts[count($urlParts) - 1]);
+                    if ($value > 0) {
 
-                    if ($child->attr('value') > 0) {
-
-                        $imgURL = implode('/', $urlParts) . '/' . $child->attr('value') . '.html';
-
-                        $imx = $this->fetchContent($imgURL);
-                        $src = $imx->filter($this->config['image_page_filter']);
+                        $imgURL = $this->getImageURL($child->attr('value'), $link);
+                        $img    = $this->fetchContent($imgURL);
+                        $src    = $img->filter($this->config['image_page_filter'])->attr('src');
 
                         // Make sure it's a valid resource
                         if ($src) {
 
-                            $parts   = explode('/', $src->attr('src'));
+                            // Get the image name
+                            $parts = explode('/', $src);
                             $imgName = $parts[count($parts) - 1];
 
                             // Check if the image downloaded
                             if (! file_exists($this->currentPath . '/' . $imgName)) {
-                                $this->download($src->attr('src'), $this->currentPath . '/' . $imgName, $imgName);
+                                $this->download($src, $this->currentPath . '/' . $imgName, $imgName);
                             }
                             else {
                                 $this->skipFile($imgName);
@@ -444,6 +393,9 @@ class Scraper extends Command
                         }
                     }
                 });
+
+                // Set latest fetched chapter
+                $this->setLatestChapter($chapterNum);
 
                 $this->showPageSleep();
             } //
@@ -491,13 +443,106 @@ class Scraper extends Command
      */
     private function getChapterLinks()
     {
-        // Get chapters link from main comic page
-        $this->crawler = $this->fetchContent($this->url);
-
+        // Get chapter links from main comic page
         $this->crawler->filter($this->config['table_of_content_filter'])->each(function ($node) {
 
             // Get the chapter link
             $this->chapterLinks[] = $node->filter($this->config['table_of_content_links_filter'])->first()->attr('href');
         });
+
+        if ($this->config['type'] == 'mangafox') {
+            $this->chapterLinks = array_reverse($this->chapterLinks);
+        }
+
+        // Get first chapter number
+        $this->meta['first']  = $this->getChapterNum($this->chapterLinks[0]);
+
+        // Get the latest chapter number
+        $this->meta['latest'] = $this->getChapterNum($this->chapterLinks[count($this->chapterLinks) - 1]);
     }
+
+    /**
+     * Write metadata to meta.json file for later use
+     */
+    private function writeMeta()
+    {
+        $this->fs->touch($this->base . '/meta.json');
+        $this->fs->dumpFile($this->base . '/meta.json', json_encode($this->meta));
+    }
+
+    /**
+     * @param $chapterNum
+     */
+    private function setLatestChapter($chapterNum)
+    {
+        // Only set it if the current chapter is lower
+        if (! isset($this->meta['current']) OR $this->meta['current'] < $chapterNum) {
+
+            // Get latest fetched chapter
+            $this->meta['current'] = $chapterNum;
+        }
+    }
+
+    /**
+     * Construct proper URL to chapter page
+     *
+     * @param $link
+     * @return string
+     */
+    private function getChapterLink($link)
+    {
+        if (! strstr($link, 'http')) {
+            return rtrim($this->config['base_url'], '/') . '/' . ltrim($link, '/');
+        }
+
+        return $link;
+    }
+
+    /**
+     * Get image URL
+     *
+     * @param $value
+     * @param $link
+     * @return string
+     */
+    private function getImageURL($value, $link)
+    {
+        switch ($this->config['type']) {
+
+            case 'mangafox':
+                $urlParts = explode('/', $link);
+                unset($urlParts[count($urlParts) - 1]);
+
+                return implode('/', $urlParts) . '/' . $value . '.html';
+                break;
+
+            case 'mangareader':
+            case 'mangapanda':
+            default:
+                $imgURL = $this->config['base_url'] . $value;
+
+                if ($imgURL == $link) {
+                    $imgURL .= '/1';
+                }
+
+                return $imgURL;
+                break;
+        }
+    }
+
+    /**
+     * Get proper image link value
+     *
+     * @param $value
+     * @return mixed
+     */
+    private function getDropdownValue($value)
+    {
+        if (strstr($value, '/')) {
+            $parts = explode('/', $value);
+            return $parts[count($parts) - 1];
+        }
+        return $value;
+    }
+
 }
