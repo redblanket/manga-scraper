@@ -66,7 +66,7 @@ class ScraperCommand extends BaseCommand
             $this->getChapterLinks();
             $this->validateStartEnd();
             $this->showChapterTitle();
-            $this->getImages();
+            $this->getImages($this->chapterLinks);
             $this->writeMeta();
 
             $this->output->writeln('');
@@ -77,6 +77,51 @@ class ScraperCommand extends BaseCommand
         }
     }
 
+    /**
+     * Initialize
+     *
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     */
+    protected function init(InputInterface $input, OutputInterface $output)
+    {
+        parent::init($input, $output);
 
+        // Get starting chapter
+        $this->start_at   = $this->input->getOption('start') ? $this->input->getOption('start') : 0;
+
+        // Get ending chapter
+        $this->end_at     = $this->input->getOption('end') ? $this->input->getOption('end') : 999;
+
+        // Save current URL to meta array
+        $this->meta['url'] = rtrim($this->input->getArgument('url'), '/');
+
+        // Get the download path, if available, or use default value from config.local.php
+        $path             = $this->input->getOption('path') ? $this->input->getOption('path') : $this->config['download_path'];
+        $path             = rtrim($path, '/');
+
+        // Get comic name
+        $parts        = explode('/', $this->meta['url']);
+        $this->folder = $this->input->getOption('folder') ? $this->input->getOption('folder') : $parts[count($parts) - 1];
+        $this->folder = str_replace('_', '-', $this->folder);
+
+        // Set the base folder path
+        $this->base = $path . '/' . $this->folder;
+
+        // Create the folder
+        $this->fs->mkdir($this->base);
+
+        $sources = include_once ROOT_PATH . '/src/RedBlanket/Config/sources.php';
+
+        foreach ($sources as $key => $config) {
+            if (strstr($this->meta['url'], $key)) {
+                $this->config = array_merge($this->config, $config, ['type' => $key]);
+                continue;
+            }
+        }
+
+        // Get the TOC page
+        $this->crawler = $this->fetchContent($this->meta['url']);
+    }
 
 }
