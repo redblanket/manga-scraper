@@ -128,6 +128,10 @@ There are some basic configuration for the app that you need to check out.
 
 ## Changelog
 
+### v1.1.5
+* Added checking md5 checksum file to make sure the remote and local files are matched
+* Splitting up methods to base class
+
 ### v1.1.4
 * Ask for download path on first run
 * Remove config.php and relies on auto-generated config.local.php
