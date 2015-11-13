@@ -88,7 +88,7 @@ class Scraper extends Command
     /**
      * Configure the app
      */
-    public function configure()
+    protected function configure()
     {
         $this
             ->setName('run')
@@ -134,12 +134,14 @@ class Scraper extends Command
      *
      * @return int|null|void
      */
-    public function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output)
     {
         $this->init($input, $output);
 
         try {
             $this->getChapterLinks();
+            $this->validateStartEnd();
+            $this->showChapterTitle();
             $this->getImages();
             $this->writeMeta();
 
@@ -339,24 +341,6 @@ class Scraper extends Command
      */
     private function getImages()
     {
-        // If starting chapter is lower than the first available chapter
-        if ($this->start_at < $this->meta['first']) {
-            $this->output->writeln('<error>Starting chapter ' . $this->start_at . ' is not available!</error>');
-            die;
-        }
-        // If starting chapter is higher than the latest available chapter
-        elseif ($this->start_at > $this->meta['latest']) {
-            $this->output->writeln('<error>Chapter ' . $this->start_at . ' is not available!</error>');
-            die;
-        }
-        // If starting chapter is higher than the ending chapter
-        elseif ($this->start_at > $this->end_at) {
-            $this->output->writeln('<error>Starting chapter cannot be higher value than ending chapter!</error>');
-            die;
-        }
-
-        $this->showChapterTitle($this->crawler);
-
         foreach ($this->chapterLinks as $link) {
 
             $chapterNum = $this->getChapterNum($link);
@@ -435,13 +419,11 @@ class Scraper extends Command
 
     /**
      * Show chapter title
-     *
-     * @param $content
      */
-    private function showChapterTitle($content)
+    private function showChapterTitle()
     {
         $this->output->writeln('');
-        $this->output->writeln('<question> ' . $this->getTitle($content) . ' </question>');
+        $this->output->writeln('<question> ' . $this->getTitle($this->crawler) . ' </question>');
         $this->output->writeln('');
     }
 
@@ -584,6 +566,33 @@ class Scraper extends Command
         }
 
         return rtrim($path, '/');
+    }
+
+    /**
+     * Validate start and end chapter
+     */
+    private function validateStartEnd()
+    {
+        if (isset($this->meta['latest']) AND isset($this->meta['first'])) {
+
+            // If starting chapter is lower than the first available chapter
+            if ($this->start_at < $this->meta['first']) {
+                $this->output->writeln('<error>Starting chapter ' . $this->start_at . ' is not available!</error>');
+                die;
+            }
+
+            // If starting chapter is higher than the latest available chapter
+            elseif ($this->start_at > $this->meta['latest']) {
+                $this->output->writeln('<error>Chapter ' . $this->start_at . ' is not available!</error>');
+                die;
+            }
+        }
+
+        // If starting chapter is higher than the ending chapter
+        elseif ($this->start_at > $this->end_at) {
+            $this->output->writeln('<error>Starting chapter cannot be higher value than ending chapter!</error>');
+            die;
+        }
     }
 
 }
