@@ -4,12 +4,6 @@ Get images from [MangaPanda](http://mangapanda.com), [MangaReader](http://mangar
 
 **Use it for educational purpose only!**
 
-## What's new
-
-* Download method for all website has been merged.
-* Do extra checking for input option ```--start``` and ```--end``` to make sure the value is valid.
-* Create metadata file to save some information about the comic/manga.
-
 ## Installation
 
 Run these command to install:
@@ -131,6 +125,17 @@ There are some basic configuration for the app that you need to check out.
 * [MangaPanda](http://mangapanda.com)
 * [MangaReader](http://mangareader.net)
 * [MangaFox](http://mangafox.me)
+
+## Changelog
+
+### v1.1.4
+* Ask for download path on first run
+* Remove config.php and relies on auto-generated config.local.php
+
+### v1.1.3
+* Download method for all website has been merged.
+* Do extra checking for input option ```--start``` and ```--end``` to make sure the value is valid.
+* Create metadata file to save some information about the comic/manga.
 
 ## License
 
