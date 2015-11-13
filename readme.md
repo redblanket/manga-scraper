@@ -1,6 +1,8 @@
 # Manga Scraper
 
-Get images from [MangaPanda](http://mangapanda.com), [MangaReader](http://mangareader.net) or [MangaFox](http://mangafox.me) and save it for offline reading.
+Download full manga chapter from [MangaPanda](http://mangapanda.com), [MangaReader](http://mangareader.net) or [MangaFox](http://mangafox.me) and save it for offline reading.
+
+Manga Scraper is a CLI (Command Line Interface) app that can get all your manga and store it in your computer. If you're on Linux, BSD or Mac OS X, you can even set a cron job to get the updates automatically.
 
 **Use it for educational purpose only!**
 
