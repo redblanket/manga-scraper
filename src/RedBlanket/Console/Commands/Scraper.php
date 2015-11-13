@@ -77,7 +77,12 @@ class Scraper extends Command
     /**
      * @var array Store chapter links
      */
-    protected $links;
+    protected $chapterLinks;
+
+    /**
+     * @var \Symfony\Component\DomCrawler\Crawler
+     */
+    protected $crawler;
 
     /**
      * Configure the app
@@ -133,6 +138,7 @@ class Scraper extends Command
         $this->init($input, $output);
 
         try {
+            $this->getChapterLinks();
             $this->getImages();
 
             $this->output->writeln('');
@@ -335,14 +341,9 @@ class Scraper extends Command
      */
     private function getMangaPanda()
     {
-        // Get chapters link from main comic page
-        $comic = $this->fetchContent($this->url);
+        $this->showChapterTitle($this->crawler);
 
-        $this->showChapterTitle($comic);
-
-        $comic->filter($this->config['table_of_content_filter'])->each(function ($node) {
-
-            $link = $node->filter('a')->first()->attr('href');
+        foreach ($this->chapterLinks as $link) {
             $chapterNum = $this->getChapterNum($link);
 
             if ($chapterNum >= $this->start_at AND $chapterNum <= $this->end_at) {
@@ -354,6 +355,7 @@ class Scraper extends Command
 
                 // Create chapter folder
                 $this->fs->mkdir($this->currentPath);
+
                 $chapterLink = $this->config['base_url'] . $link;
                 $chapterPage = $this->fetchContent($chapterLink);
 
@@ -383,7 +385,7 @@ class Scraper extends Command
 
                 $this->showPageSleep();
             } //
-        });
+        }
     }
 
     /**
@@ -391,20 +393,11 @@ class Scraper extends Command
      */
     private function getMangaFox()
     {
-        // Get chapters link from main comic page
-        $comic = $this->fetchContent($this->url);
+        $this->chapterLinks = array_reverse($this->chapterLinks);
 
-        $comic->filter($this->config['table_of_content_filter'])->each(function ($node) {
+        $this->showChapterTitle($this->crawler);
 
-            // Get the chapter link
-            $this->links[] = $node->filter('a.tips')->first()->attr('href');
-        });
-
-        $this->links = array_reverse($this->links);
-
-        $this->showChapterTitle($comic);
-
-        foreach ($this->links as $link) {
+        foreach ($this->chapterLinks as $link) {
 
             $chapterNum = $this->getChapterNum($link);
 
@@ -491,5 +484,20 @@ class Scraper extends Command
             sleep((int) $this->config['page_sleep']);
             $this->output->writeln('<fg=cyan>Please wait ...</>');
         }
+    }
+
+    /**
+     * @return DomCrawler
+     */
+    private function getChapterLinks()
+    {
+        // Get chapters link from main comic page
+        $this->crawler = $this->fetchContent($this->url);
+
+        $this->crawler->filter($this->config['table_of_content_filter'])->each(function ($node) {
+
+            // Get the chapter link
+            $this->chapterLinks[] = $node->filter($this->config['table_of_content_links_filter'])->first()->attr('href');
+        });
     }
 }

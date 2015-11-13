@@ -10,6 +10,9 @@ return [
         // CSS selector filter for TOC page
         'table_of_content_filter' => '#listing tr td:first-child',
 
+        // CSS selector filter for TOC chapter links
+        'table_of_content_links_filter' => 'a',
+
         // Pages dropdown
         'pages_list_filter' => '#pageMenu',
 
@@ -28,6 +31,9 @@ return [
         // CSS selector filter for TOC page
         'table_of_content_filter' => '#listing tr td:first-child',
 
+        // CSS selector filter for TOC chapter links
+        'table_of_content_links_filter' => 'a',
+
         // Pages dropdown
         'pages_list_filter' => '#pageMenu',
 
@@ -45,6 +51,9 @@ return [
 
         // CSS selector filter for TOC page
         'table_of_content_filter' => '#chapters ul.chlist li',
+
+        // CSS selector filter for TOC chapter links
+        'table_of_content_links_filter' => 'a.tips',
 
         // Pages dropdown
         'pages_list_filter' => '#top_bar select.m',
