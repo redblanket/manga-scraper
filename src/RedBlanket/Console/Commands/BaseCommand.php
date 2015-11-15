@@ -278,13 +278,15 @@ abstract class BaseCommand extends Command
                             $parts = explode('/', $src);
                             $imgName = $parts[count($parts) - 1];
 
+                            // compare hash
+                            $remoteFile = md5_file($src);
+
                             // Check if the image downloaded
                             if (! file_exists($this->currentPath . '/' . $imgName)) {
                                 $this->download($src, $this->currentPath . '/' . $imgName, $imgName);
+                                $localFile  = md5_file($this->currentPath . '/' . $imgName);
                             }
                             else {
-                                // compare hash
-                                $remoteFile = md5_file($src);
                                 $localFile  = md5_file($this->currentPath . '/' . $imgName);
 
                                 if ($remoteFile == $localFile) {
@@ -293,14 +295,24 @@ abstract class BaseCommand extends Command
                                 else {
                                     $this->download($src, $this->currentPath . '/' . $imgName, $imgName);
                                 }
-                                
                             }
+
+                            $this->meta['files'][$chapterNum]['url'] = $link;
+                            $this->meta['files'][$chapterNum]['images'][] = [
+                                'name'      => $imgName,
+                                'url'       => $src,
+                                'completed' => ($localFile == $remoteFile) ? 1 : 0
+                            ];
+
+                            $this->writeMeta();
                         }
                     }
                 });
 
                 // Set latest fetched chapter
                 $this->setLatestChapter($chapterNum);
+
+                $this->writeMeta();
 
                 $this->showPageSleep();
             } //
@@ -502,6 +514,24 @@ abstract class BaseCommand extends Command
             $this->output->writeln('<error>Starting chapter cannot be higher value than ending chapter!</error>');
             die;
         }
+    }
+
+    /**
+     * Update meta file
+     */
+    protected function updateMeta()
+    {
+        $metaJson = [];
+
+        if (file_exists($this->base . '/meta.json')) {
+            $metaJson = json_decode(file_get_contents($this->base . '/meta.json'), true);
+        }
+
+//        print_r($this->meta);
+
+//        $this->meta = array_merge($metaJson, $this->meta);
+
+        $this->fs->dumpFile($this->base . '/meta.json', json_encode($this->meta));
     }
 
 }
