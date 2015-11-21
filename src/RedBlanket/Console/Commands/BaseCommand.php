@@ -90,6 +90,11 @@ abstract class BaseCommand extends Command
     protected $meta;
 
     /**
+     * @var string Store comic name
+     */
+    protected $title;
+
+    /**
      * Initialize
      *
      * @param InputInterface  $input
@@ -122,7 +127,6 @@ abstract class BaseCommand extends Command
 
             $this->output->writeln('Default download location is set to <info>' . $path . '</info>. You can change the value in <comment>' . ROOT_PATH . '/config.local.php' . '</comment> file.');
             $this->output->writeln('');
-
         }
 
         return include_once ROOT_PATH . '/config.local.php';
@@ -174,7 +178,7 @@ abstract class BaseCommand extends Command
         }
 
         try {
-            $content = file_get_contents($url);
+            $this->client->request('GET', $url, ['sink' => $location]);
         }
         catch (\Exception $e) {
             // Retry
@@ -182,10 +186,6 @@ abstract class BaseCommand extends Command
 
             $this->retry++;
         }
-
-        // Write the file to disk
-        $this->fs->dumpFile($location, $content);
-
         $this->output->writeln('Image: <info>' . $image . '</info>');
 
         if ((int) $this->config['image_sleep'] > 0) {
@@ -246,7 +246,7 @@ abstract class BaseCommand extends Command
 
             if ($chapterNum >= $this->start_at AND $chapterNum <= $this->end_at) {
 
-                $this->output->writeln('<comment>Chapter ' . $chapterNum . '</comment>');
+                $this->output->writeln($this->title . ': <comment>Chapter ' . $chapterNum . '</comment>');
 
                 // Set folder location
                 $this->setCurrentPath($chapterNum);
@@ -263,7 +263,7 @@ abstract class BaseCommand extends Command
                 // Navigate page
                 $chapterPage->filter($this->config['pages_list_filter'])->children()->each(function ($child) use ($link, $chapterNum) {
 
-                    $value = $this->getDropdownValue($child->attr('value'));
+                    $value = $this->getImageLink($child->attr('value'));
 
                     if ($value > 0) {
 
@@ -335,7 +335,10 @@ abstract class BaseCommand extends Command
         ];
 
         $title = $content->filter($this->config['title_filter'])->first()->text();
-        return ucwords(strtolower(preg_replace($pattern, '', $title)));
+        $title = rtrim(ucwords(strtolower(preg_replace($pattern, '', $title))), ' ');
+        $this->title = $title;
+
+        return $title;
     }
 
     /**
@@ -387,7 +390,6 @@ abstract class BaseCommand extends Command
      */
     protected function writeMeta()
     {
-        $this->fs->touch($this->base . '/meta.json');
         $this->fs->dumpFile($this->base . '/meta.json', json_encode($this->meta));
     }
 
@@ -457,7 +459,7 @@ abstract class BaseCommand extends Command
      * @param $value
      * @return mixed
      */
-    protected function getDropdownValue($value)
+    protected function getImageLink($value)
     {
         if (strstr($value, '/')) {
             $parts = explode('/', $value);
@@ -517,21 +519,17 @@ abstract class BaseCommand extends Command
     }
 
     /**
-     * Update meta file
+     * Load meta file
      */
-    protected function updateMeta()
+    protected function loadMetadata()
     {
-        $metaJson = [];
-
-        if (file_exists($this->base . '/meta.json')) {
-            $metaJson = json_decode(file_get_contents($this->base . '/meta.json'), true);
+        if (! file_exists($this->base . '/meta.json')) {
+            $this->fs->touch($this->base . '/meta.json');
+            $this->fs->dumpFile($this->base . '/meta.json', []);
         }
 
-//        print_r($this->meta);
-
-//        $this->meta = array_merge($metaJson, $this->meta);
-
-        $this->fs->dumpFile($this->base . '/meta.json', json_encode($this->meta));
+        $meta = file_get_contents($this->base . '/meta.json');
+        $this->meta = json_decode($meta, true);
     }
 
 }
