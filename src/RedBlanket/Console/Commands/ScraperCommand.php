@@ -61,6 +61,7 @@ class ScraperCommand extends BaseCommand
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $this->init($input, $output);
+        $this->loadMetadata();
 
         try {
             $this->getChapterLinks();
@@ -97,8 +98,8 @@ class ScraperCommand extends BaseCommand
         $this->meta['url'] = rtrim($this->input->getArgument('url'), '/');
 
         // Get the download path, if available, or use default value from config.local.php
-        $path             = $this->input->getOption('path') ? $this->input->getOption('path') : $this->config['download_path'];
-        $path             = rtrim($path, '/');
+        $path         = $this->input->getOption('path') ? $this->input->getOption('path') : $this->config['download_path'];
+        $path         = rtrim($path, '/');
 
         // Get comic name
         $parts        = explode('/', $this->meta['url']);
@@ -106,7 +107,7 @@ class ScraperCommand extends BaseCommand
         $this->folder = str_replace('_', '-', $this->folder);
 
         // Set the base folder path
-        $this->base = $path . '/' . $this->folder;
+        $this->base   = $path . '/' . $this->folder;
 
         // Create the folder
         $this->fs->mkdir($this->base);
