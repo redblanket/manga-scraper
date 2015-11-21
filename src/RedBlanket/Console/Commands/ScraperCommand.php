@@ -47,6 +47,18 @@ class ScraperCommand extends BaseCommand
                 InputOption::VALUE_REQUIRED,
                 'Set the last chapter to be fetched',
                 999
+            )
+            ->addOption(
+                'only',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Get the only chapter specified. Separate chapter number by comma. If the value is set, --start and --end options will be ignored.'
+            )
+            ->addOption(
+                'except',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Get the all the chapters EXCEPT those specified. Separate chapter number by comma. If the value is set, --start and --end options will be ignored. This option will get higher priority then --only option.'
             );
     }
 
@@ -64,10 +76,19 @@ class ScraperCommand extends BaseCommand
         $this->loadMetadata();
 
         try {
+            // Fetch chapter links from the remote site
             $this->getChapterLinks();
+
+            // Validate start and end chapter values
             $this->validateStartEnd();
+
+            // SHow comic title
             $this->showChapterTitle();
+
+            // Start downloading process
             $this->getImages($this->chapterLinks);
+
+            // Update metadata file
             $this->writeMeta();
 
             $this->output->writeln('');

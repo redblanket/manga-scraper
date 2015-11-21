@@ -383,6 +383,14 @@ abstract class BaseCommand extends Command
 
         // Get the latest chapter number
         $this->meta['latest'] = $this->getChapterNum($this->chapterLinks[count($this->chapterLinks) - 1]);
+
+        if (! empty($this->input->getOption('only')) OR ! empty($this->input->getOption('except'))) {
+
+            $exclude = ! empty($this->input->getOption('except')) ? true : false;
+            $array   = ! empty($this->input->getOption('except')) ? $this->input->getOption('except') : $this->input->getOption('only');
+
+            $this->filterChapterLinks($array, $exclude);
+        }
     }
 
     /**
@@ -498,24 +506,50 @@ abstract class BaseCommand extends Command
     {
         if (isset($this->meta['latest']) AND isset($this->meta['first'])) {
 
-            // If starting chapter is lower than the first available chapter
-            if ($this->start_at < $this->meta['first']) {
-                $this->output->writeln('<error>Starting chapter ' . $this->start_at . ' is not available!</error>');
-                die;
-            }
+            if (! empty($this->input->getOption('only')) OR ! empty($this->input->getOption('except'))) {
 
-            // If starting chapter is higher than the latest available chapter
-            elseif ($this->start_at > $this->meta['latest']) {
-                $this->output->writeln('<error>Chapter ' . $this->start_at . ' is not available!</error>');
-                die;
+                if (! empty($this->input->getOption('except'))) {
+                    $arr = explode(',', trim($this->input->getOption('except')));
+
+                    foreach ($arr as $chapter) {
+                        if ($chapter < $this->meta['first'] OR $chapter > $this->meta['latest']) {
+                            $this->output->writeln('<error>Chapter ' . $chapter . ' is not available!</error>');
+                            die;
+                        }
+                    }
+                }
+                elseif (! empty($this->input->getOption('only'))) {
+
+                    $arr = explode(',', trim($this->input->getOption('only')));
+
+                    foreach ($arr as $chapter) {
+                        if ($chapter < $this->meta['first'] OR $chapter > $this->meta['latest']) {
+                            $this->output->writeln('<error>Chapter ' . $chapter . ' is not available!</error>');
+                            die;
+                        }
+                    }
+                }
+            }
+            else {
+                // If starting chapter is lower than the first available chapter
+                if ($this->start_at < $this->meta['first']) {
+                    $this->output->writeln('<error>Starting chapter ' . $this->start_at . ' is not available!</error>');
+                    die;
+                }
+                // If starting chapter is higher than the latest available chapter
+                elseif ($this->start_at > $this->meta['latest']) {
+                    $this->output->writeln('<error>Chapter ' . $this->start_at . ' is not available!</error>');
+                    die;
+                }
+                // If starting chapter is higher than the ending chapter
+                elseif ($this->start_at > $this->end_at) {
+                    $this->output->writeln('<error>Starting chapter cannot be higher value than ending chapter!</error>');
+                    die;
+                }
             }
         }
 
-        // If starting chapter is higher than the ending chapter
-        elseif ($this->start_at > $this->end_at) {
-            $this->output->writeln('<error>Starting chapter cannot be higher value than ending chapter!</error>');
-            die;
-        }
+
     }
 
     /**
@@ -530,6 +564,36 @@ abstract class BaseCommand extends Command
 
         $meta = file_get_contents($this->base . '/meta.json');
         $this->meta = json_decode($meta, true);
+    }
+
+    /**
+     * Include or exclude chapter to be fetched
+     *
+     * @param string $chapters  List of chapters separated by comma
+     * @param bool   $exclude   Whether to include or exclude the chapter
+     */
+    protected function filterChapterLinks($chapters, $exclude = false)
+    {
+        $chapters = explode(',', trim($chapters));
+
+        $links = [];
+
+        foreach ($this->chapterLinks as $link) {
+            $num = $this->getChapterNum($link);
+
+            if ($exclude) {
+                if (! in_array($num, $chapters)) {
+                    $links[] = $link;
+                }
+            }
+            else {
+                if (in_array($num, $chapters)) {
+                    $links[] = $link;
+                }
+            }
+        }
+
+        $this->chapterLinks = $links;
     }
 
 }
