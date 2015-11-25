@@ -128,6 +128,9 @@ There are some basic configuration for the app that you need to check out.
 
 ## Changelog
 
+### v1.1.6
+* Added ```--only``` and ```--except``` options.
+
 ### v1.1.5
 * Added checking md5 checksum file to make sure the remote and local files are matched
 * Splitting up methods to base class
