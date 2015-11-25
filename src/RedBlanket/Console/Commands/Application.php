@@ -7,7 +7,7 @@ use Symfony\Component\Console\Application as BaseApplication;
 class Application extends BaseApplication
 {
     const NAME = 'Manga Scraper';
-    const VERSION = '1.1.5';
+    const VERSION = '1.1.6';
 
     public function __construct()
     {
