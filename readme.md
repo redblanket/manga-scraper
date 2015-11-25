@@ -19,12 +19,6 @@ composer install
 ## Usage
 
 ```
-./scraper run <url>
-```
-
-### Basic command
-
-```
 // mangapanda
 ./scraper run http://mangapanda.com/naruto
 
@@ -36,7 +30,17 @@ composer install
 
 ```
 
-### Set folder name
+### Argument
+
+<dl>
+	<dt>url</dt>
+	<dd>URL to the comic/manga list of chapter links. <strong>REQUIRED!</strong></dd>
+</dl>
+
+### Options
+
+
+#### ```--folder```
 
 You can set the folder name for the images. By default, the folder name created based on comic/manga name from URI.
 
@@ -46,7 +50,7 @@ You can set the folder name for the images. By default, the folder name created 
 ./scraper run http://mangafox.me/manga/one_piece/ --folder="One Piece"
 ```
 
-### Custom save path
+#### ```--path```
 
 Set custom save path, different from defined in your *config.local.php* file.
 
@@ -56,9 +60,9 @@ Set custom save path, different from defined in your *config.local.php* file.
 ./scraper run http://mangafox.me/manga/one_piece/ --path="C:\My Documents\Comics"
 ```
 
-### Start chapter
+#### ```--start```
 
-Set the chapter to start. This is useful when your previous download stopped and you want to resume the downloads. 
+Set the chapter to start. This is useful when your previous download stopped and you want to resume the downloads.
 
 ```
 ./scraper run http://mangapanda.com/naruto --start=10
@@ -67,7 +71,7 @@ Set the chapter to start. This is useful when your previous download stopped and
 ***Note:***
 *You can combine with ```--end``` option. See below.*
 
-### End chapter
+#### ```--end```
 
 Set the chapter to end. This is useful when you want to limit fetching process.
 
@@ -78,13 +82,27 @@ Set the chapter to end. This is useful when you want to limit fetching process.
 ***Note:***
 *You can combine with ```--start``` option. See above.*
 
+#### ```--only```
 
-### Argument
+You can use ```--only``` to get only specific chapters, separated by comma.
 
-<dl>
-	<dt>url</dt>
-	<dd>URL to the comic/manga list of chapter links.</dd>
-</dl>
+```
+./scraper run http://mangapanda.com/naruto --only=201,202,207
+```
+
+***Note:***
+*If you specify this option, ```--start``` and ```--end``` will be ignored!*
+
+#### ```--except```
+
+You can use ```--except``` to excludes specific chapters, separated by comma.
+
+```
+./scraper run http://mangapanda.com/naruto --except=1,2,500,123
+```
+
+***Note:***
+*If you specify this option, ```--start``` and ```--end``` will be ignored!*
 
 
 ## Configuration
@@ -101,26 +119,6 @@ There are some basic configuration for the app that you need to check out.
 	<dt>image_sleep</dt>
 	<dd>Delay between images.</dd>
 </dl>
-
-### Options
-
-<dl>
-
-	<dt>--path="/full/path/to/disk"</dt>
-	<dd>Set where to store the files. Specify full path to the <strong>parent</strong> folder.</code></dd>
-
-	<dt>--folder="name of your comic folder"</dt>
-	<dd>Set the folder name manually using this option. If it's not set, the folder will be created based on comic/manga name from URI.</dd>
-
-	<dt>--start=num</dt>
-
-	<dd>Set the starting chapter to be fetched. For example, if you need to start from chapter 3, you can set <code>--start=3</code> on the command.</dd>
-
-	<dt>--end=num</dt>
-
-	<dd>Same with <code>--start</code> option, except this will be the last chapter to be fetched.</dd>
-	
-</dl>	
 
 ## Supported Website
 
