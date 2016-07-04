@@ -70,4 +70,25 @@ return [
         // CSS selector to get comic title
         'title_filter' => '#title h1',
     ],
+
+    'mangahere' => [
+
+        // source base url
+        'base_url' => 'http://www.mangahere.co/manga',
+
+        // CSS selector filter for TOC page
+        'table_of_content_filter' => '#main .detail_list ul li',
+
+        // CSS selector filter for TOC chapter links
+        'table_of_content_links_filter' => 'a.color_0077',
+
+        // Pages dropdown
+        'pages_list_filter' => '#top_chapter_list',
+
+        // CSS selector filter for single image page
+        'image_page_filter' => '#viewer #image',
+
+        // CSS selector to get comic title
+        'title_filter' => '.title h2',
+    ],
 ];
